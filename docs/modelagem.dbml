@@ -1,0 +1,88 @@
+Project acolhe {
+  database_type: 'SQLite'
+  Note: 'Acolhe — gestão de ONG animal'
+}
+
+Table auth_user {
+  id integer [pk, increment]
+  username varchar(150) [unique, not null]
+  password varchar(128) [not null]
+  first_name varchar(150) [not null]
+  last_name varchar(150) [not null]
+  email varchar(254) [not null]
+  is_staff boolean [not null]
+  is_superuser boolean [not null]
+  is_active boolean [not null]
+  last_login datetime
+  date_joined datetime [not null]
+
+  Note: 'Usuário do Django'
+}
+
+Table animais_especie {
+  id integer [pk, increment]
+  nome varchar(80) [unique, not null]
+}
+
+Table animais_abrigo {
+  id integer [pk, increment]
+  nome varchar(120) [not null]
+  cidade varchar(80) [not null]
+  endereco varchar(255) [not null]
+  capacidade integer [not null]
+}
+
+Table animais_animal {
+  id integer [pk, increment]
+  nome varchar(80) [not null]
+  sexo varchar(1) [not null, note: 'M ou F']
+  porte varchar(1) [not null, note: 'P, M ou G']
+  status varchar(20) [not null, default: 'disponivel', note: 'disponivel, em_tratamento ou adotado']
+  data_entrada date [not null]
+  castrado boolean [not null]
+  descricao text [not null]
+  especie_id integer [not null]
+  abrigo_id integer [not null]
+}
+
+Table animais_prontuario {
+  id integer [pk, increment]
+  data date [not null]
+  veterinario varchar(120) [not null]
+  descricao text [not null]
+  animal_id integer [not null]
+}
+
+Table pessoas_perfil {
+  id integer [pk, increment]
+  papel varchar(20) [not null, note: 'adotante, voluntario ou gestor']
+  telefone varchar(20) [not null]
+  usuario_id integer [unique, not null]
+}
+
+Table pessoas_adocao {
+  id integer [pk, increment]
+  data_pedido date [not null]
+  status varchar(20) [not null, default: 'analise', note: 'analise, aprovada ou recusada']
+  observacao text [not null]
+  animal_id integer [not null]
+  solicitante_id integer [not null]
+}
+
+Table pessoas_doacao {
+  id integer [pk, increment]
+  doador_nome varchar(120) [not null]
+  tipo varchar(20) [not null, note: 'dinheiro, racao, medicamento ou outro']
+  valor decimal [note: 'pode ser nulo']
+  descricao varchar(255) [not null]
+  data date [not null]
+  registrado_por_id integer [not null]
+}
+
+Ref: animais_animal.especie_id > animais_especie.id [delete: restrict]
+Ref: animais_animal.abrigo_id > animais_abrigo.id [delete: restrict]
+Ref: animais_prontuario.animal_id > animais_animal.id [delete: cascade]
+Ref: pessoas_perfil.usuario_id - auth_user.id [delete: cascade]
+Ref: pessoas_adocao.animal_id > animais_animal.id [delete: restrict]
+Ref: pessoas_adocao.solicitante_id > auth_user.id [delete: restrict]
+Ref: pessoas_doacao.registrado_por_id > auth_user.id [delete: restrict]
