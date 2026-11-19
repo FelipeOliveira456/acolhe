@@ -41,6 +41,7 @@ Table animais_animal {
   data_entrada date [not null]
   castrado boolean [not null]
   descricao text [not null]
+  foto varchar(100) [not null, note: 'caminho da imagem em media/animais, pode ficar vazio']
   especie_id integer [not null]
   abrigo_id integer [not null]
 }
