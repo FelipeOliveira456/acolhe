@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe - Adoções
+{% endblock %}
+
+{% block conteudo %}
+    <main class="container mt-4">
+        <h1 class="mb-0">{% if equipe %}Adoções{% else %}Minhas adoções{% endif %}</h1>
+        <p class="text-secondary">
+            {% if papel == 'gestor' %}
+                Analise os pedidos e aprove ou recuse cada um. Ao aprovar, o animal passa a ser adotado.
+            {% elif equipe %}
+                Pedidos de adoção feitos pelos adotantes.
+            {% else %}
+                Acompanhe a situação dos seus pedidos de adoção.
+            {% endif %}
+        </p>
+
+        <form class="card card-body shadow-sm" method="GET">
+            <div class="row g-2">
+                {% if equipe %}
+                    <div class="col-md-5">
+                        <input type="text" class="form-control" name="q" value="{{ busca.q }}" placeholder="Buscar por animal ou solicitante">
+                    </div>
+                {% endif %}
+                <div class="col-md-4">
+                    <select class="form-select" name="status">
+                        <option value="">Todas as situações</option>
+                        {% for codigo, nome in situacoes %}
+                            <option value="{{ codigo }}" {% if busca.status == codigo %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-success flex-fill" type="submit"><i class="fas fa-filter"></i> Filtrar</button>
+                    <a class="btn btn-outline-secondary" href="{% url 'adocoes' %}" title="Limpar filtros"><i class="fas fa-times"></i></a>
+                </div>
+            </div>
+        </form>
+
+        <div class="table-responsive mt-3">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Animal</th>
+                        {% if equipe %}<th>Solicitante</th>{% endif %}
+                        <th>Data do pedido</th>
+                        <th>Situação</th>
+                        <th>Observação</th>
+                        {% if papel == 'gestor' or papel == 'adotante' %}<th class="text-end">Ações</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for adocao in adocoes %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'animal_detalhe' adocao.animal_id %}">{{ adocao.animal.nome }}</a>
+                                <span class="small text-secondary d-block">{{ adocao.animal.especie }}</span>
+                            </td>
+                            {% if equipe %}
+                                <td>
+                                    {{ adocao.solicitante.first_name|default:adocao.solicitante.username }}
+                                    <span class="small text-secondary d-block">{{ adocao.solicitante.email }}</span>
+                                </td>
+                            {% endif %}
+                            <td>{{ adocao.data_pedido|date:"d/m/Y" }}</td>
+                            <td><span class="badge text-bg-{{ adocao.cor_status }}">{{ adocao.get_status_display }}</span></td>
+                            <td class="small">{{ adocao.observacao|default:"-"|truncatechars:80 }}</td>
+                            {% if papel == 'gestor' %}
+                                <td class="text-end text-nowrap">
+                                    <form action="{% url 'adocao_status' adocao.id %}" method="POST" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+                                        {% if adocao.status == 'analise' %}
+                                            <button class="btn btn-sm btn-success" type="submit" name="status" value="aprovada"><i class="fas fa-check"></i> Aprovar</button>
+                                            <button class="btn btn-sm btn-outline-danger" type="submit" name="status" value="recusada"><i class="fas fa-times"></i> Recusar</button>
+                                        {% elif adocao.status == 'aprovada' %}
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit" name="status" value="analise" onclick="return confirm('Desfazer a aprovação? O animal volta a ficar disponível.')"><i class="fas fa-undo"></i> Desfazer</button>
+                                        {% else %}
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit" name="status" value="analise"><i class="fas fa-undo"></i> Reabrir</button>
+                                        {% endif %}
+                                    </form>
+                                </td>
+                            {% elif papel == 'adotante' %}
+                                <td class="text-end">
+                                    {% if adocao.status == 'analise' %}
+                                        <form action="{% url 'adocao_cancelar' adocao.id %}" method="POST" onsubmit="return confirm('Cancelar este pedido de adoção?')">
+                                            {% csrf_token %}
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">Cancelar pedido</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-secondary">
+                                Nenhum pedido de adoção encontrado.
+                                {% if papel == 'adotante' %}<a href="{% url 'animais' %}">Conheça os animais disponíveis.</a>{% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "_paginacao.html" %}
+    </main>
+{% endblock %}

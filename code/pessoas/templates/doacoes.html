@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe - Doações
+{% endblock %}
+
+{% block conteudo %}
+    <main class="container mt-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h1 class="mb-0">Doações</h1>
+                <p class="text-secondary mb-0">Doações em dinheiro, ração, medicamentos e outros itens.</p>
+            </div>
+            <a class="btn btn-success" href="{% url 'doacao_nova' %}"><i class="fas fa-plus"></i> Nova doação</a>
+        </div>
+
+        <form class="card card-body shadow-sm mt-3" method="GET">
+            <div class="row g-2">
+                <div class="col-md-5">
+                    <input type="text" class="form-control" name="q" value="{{ busca.q }}" placeholder="Buscar por doador ou descrição">
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" name="tipo">
+                        <option value="">Todos os tipos</option>
+                        {% for codigo, nome in tipos %}
+                            <option value="{{ codigo }}" {% if busca.tipo == codigo %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-success flex-fill" type="submit"><i class="fas fa-filter"></i> Filtrar</button>
+                    <a class="btn btn-outline-secondary" href="{% url 'doacoes' %}" title="Limpar filtros"><i class="fas fa-times"></i></a>
+                </div>
+            </div>
+        </form>
+
+        <div class="d-flex flex-wrap gap-3 mt-3">
+            <span class="text-secondary">{{ paginator.count }} doação(ões) encontrada(s).</span>
+            <span><strong>Total em dinheiro:</strong> R$ {{ total|floatformat:"2g" }}</span>
+        </div>
+
+        <div class="table-responsive mt-2">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Doador</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Descrição</th>
+                        <th>Registrado por</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doacao in doacoes %}
+                        <tr>
+                            <td>{{ doacao.data|date:"d/m/Y" }}</td>
+                            <td>{{ doacao.doador_nome }}</td>
+                            <td class="text-nowrap"><i class="fas {{ doacao.icone }} text-success"></i> {{ doacao.get_tipo_display }}</td>
+                            <td class="text-nowrap">{% if doacao.valor is not None %}R$ {{ doacao.valor|floatformat:"2g" }}{% else %}-{% endif %}</td>
+                            <td class="small">{{ doacao.descricao|default:"-" }}</td>
+                            <td class="small">{{ doacao.registrado_por.first_name|default:doacao.registrado_por.username }}</td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'doacao_editar' doacao.id %}">Editar</a>
+                                {% if papel == 'gestor' %}
+                                    <a class="btn btn-sm btn-outline-danger" href="{% url 'doacao_excluir' doacao.id %}">Excluir</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="7" class="text-secondary">Nenhuma doação encontrada.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "_paginacao.html" %}
+    </main>
+{% endblock %}

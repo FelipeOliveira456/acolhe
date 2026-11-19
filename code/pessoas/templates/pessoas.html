@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe - Pessoas
+{% endblock %}
+
+{% block conteudo %}
+    <main class="container mt-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h1 class="mb-0">Pessoas</h1>
+                <p class="text-secondary mb-0">Adotantes, voluntários e gestores cadastrados no sistema.</p>
+            </div>
+            <a class="btn btn-success" href="{% url 'pessoa_nova' %}"><i class="fas fa-user-plus"></i> Nova pessoa da equipe</a>
+        </div>
+
+        <form class="card card-body shadow-sm mt-3" method="GET">
+            <div class="row g-2">
+                <div class="col-md-5">
+                    <input type="text" class="form-control" name="q" value="{{ busca.q }}" placeholder="Buscar por nome, usuário ou e-mail">
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" name="papel">
+                        <option value="">Todos os papéis</option>
+                        {% for codigo, nome in papeis %}
+                            <option value="{{ codigo }}" {% if busca.papel == codigo %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-success flex-fill" type="submit"><i class="fas fa-filter"></i> Filtrar</button>
+                    <a class="btn btn-outline-secondary" href="{% url 'pessoas' %}" title="Limpar filtros"><i class="fas fa-times"></i></a>
+                </div>
+            </div>
+        </form>
+
+        <div class="table-responsive mt-3">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Contato</th>
+                        <th>Cadastro</th>
+                        <th>Papel</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pessoa in pessoas %}
+                        <tr>
+                            <td>
+                                {{ pessoa.first_name|default:"-" }}
+                                <span class="small text-secondary d-block">@{{ pessoa.username }}{% if pessoa.is_staff %} · acessa o admin{% endif %}</span>
+                            </td>
+                            <td class="small">
+                                {{ pessoa.email|default:"-" }}
+                                <span class="d-block text-secondary">{{ pessoa.perfil.telefone|default:"" }}</span>
+                            </td>
+                            <td class="small">{{ pessoa.date_joined|date:"d/m/Y" }}</td>
+                            <td>
+                                {% if pessoa == user %}
+                                    <span class="badge text-bg-success">{{ pessoa.perfil.get_papel_display|default:"Gestor" }}</span>
+                                    <span class="small text-secondary">(você)</span>
+                                {% else %}
+                                    <form action="{% url 'pessoa_papel' pessoa.id %}" method="POST" class="d-flex gap-1">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+                                        <select class="form-select form-select-sm" name="papel" aria-label="Papel de {{ pessoa.username }}">
+                                            {% for codigo, nome in papeis %}
+                                                <option value="{{ codigo }}" {% if pessoa.perfil.papel == codigo %}selected{% endif %}>{{ nome }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button class="btn btn-sm btn-outline-success" type="submit">Alterar</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="text-secondary">Nenhuma pessoa encontrada.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "_paginacao.html" %}
+    </main>
+{% endblock %}
