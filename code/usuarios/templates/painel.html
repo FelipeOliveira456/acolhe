@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe - Painel
+{% endblock %}
+
+{% block conteudo %}
+    <main class="container mt-4">
+        <h1>Olá, {{ user.first_name|default:user.username }}!</h1>
+        {% if papel == 'adotante' %}
+            <p class="text-secondary">Acompanhe seus pedidos de adoção e conheça os animais disponíveis.</p>
+
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <div class="text-secondary small">Animais disponíveis</div>
+                            <div class="display-6">{{ disponiveis }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <div class="text-secondary small">Meus pedidos</div>
+                            <div class="display-6">{{ total_pedidos }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <div class="text-secondary small">Em análise</div>
+                            <div class="display-6 text-warning">{{ em_analise }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <div class="text-secondary small">Aprovados</div>
+                            <div class="display-6 text-success">{{ aprovadas }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mt-1">
+                <div class="col-lg-5">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header card-title-acolhe"><i class="fas fa-heart"></i> Meus últimos pedidos</div>
+                        <ul class="list-group list-group-flush">
+                            {% for pedido in pedidos %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <a href="/animais/{{ pedido.animal_id }}">{{ pedido.animal.nome }}</a>
+                                        <span class="small text-secondary d-block">{{ pedido.data_pedido|date:"d/m/Y" }}</span>
+                                    </span>
+                                    <span class="badge text-bg-{{ pedido.cor_status }}">{{ pedido.get_status_display }}</span>
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item text-secondary">Você ainda não fez nenhum pedido de adoção.</li>
+                            {% endfor %}
+                        </ul>
+                        <div class="card-body">
+                            <a class="btn btn-sm btn-outline-success" href="/adocoes">Ver todos os pedidos</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header card-title-acolhe"><i class="fas fa-dog"></i> Chegaram recentemente</div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                {% for animal in novos %}
+                                    <div class="col-6">
+                                        <a class="text-decoration-none" href="/animais/{{ animal.id }}">
+                                            {% include "_foto_animal.html" with animal=animal classe="rounded" %}
+                                            <div class="fw-semibold mt-1">{{ animal.nome }}</div>
+                                            <div class="small text-secondary">{{ animal.especie }} · {{ animal.get_porte_display }}</div>
+                                        </a>
+                                    </div>
+                                {% empty %}
+                                    <p class="text-secondary">Nenhum animal disponível no momento.</p>
+                                {% endfor %}
+                            </div>
+                            <a class="btn btn-success mt-3" href="/animais"><i class="fas fa-search"></i> Ver todos os animais</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <p class="text-secondary">Resumo da ONG hoje.</p>
+
+            <div class="row g-3">
+                <div class="col-6 col-lg-2">
+                    <a class="card h-100 shadow-sm text-decoration-none" href="/animais?status=disponivel">
+                        <div class="card-body">
+                            <div class="text-secondary small">Disponíveis</div>
+                            <div class="display-6 text-success">{{ disponiveis }}</div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <a class="card h-100 shadow-sm text-decoration-none" href="/animais?status=em_tratamento">
+                        <div class="card-body">
+                            <div class="text-secondary small">Em tratamento</div>
+                            <div class="display-6 text-warning">{{ em_tratamento }}</div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <a class="card h-100 shadow-sm text-decoration-none" href="/animais?status=adotado">
+                        <div class="card-body">
+                            <div class="text-secondary small">Adotados</div>
+                            <div class="display-6">{{ adotados }}</div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <a class="card h-100 shadow-sm text-decoration-none" href="/adocoes?status=analise">
+                        <div class="card-body">
+                            <div class="text-secondary small">Pedidos em análise</div>
+                            <div class="display-6 text-danger">{{ em_analise }}</div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <a class="card h-100 shadow-sm text-decoration-none" href="/doacoes">
+                        <div class="card-body">
+                            <div class="text-secondary small">Doações no mês</div>
+                            <div class="display-6">{{ doacoes_mes }}</div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <a class="card h-100 shadow-sm text-decoration-none" href="/doacoes?tipo=dinheiro">
+                        <div class="card-body">
+                            <div class="text-secondary small">Arrecadado</div>
+                            <div class="fs-4 fw-semibold mt-2">R$ {{ total_doado|floatformat:"2g" }}</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="row g-4 mt-1">
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">Animais por situação</h5>
+                            <div class="grafico">
+                                <canvas id="graficoStatus"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">Animais acolhidos por espécie</h5>
+                            <div class="grafico">
+                                <canvas id="graficoEspecies"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mt-1">
+                <div class="col-lg-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header card-title-acolhe"><i class="fas fa-heart"></i> Pedidos aguardando análise</div>
+                        <ul class="list-group list-group-flush">
+                            {% for pedido in pendentes %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <a href="/animais/{{ pedido.animal_id }}">{{ pedido.animal.nome }}</a>
+                                        <span class="small text-secondary d-block">{{ pedido.solicitante.first_name|default:pedido.solicitante.username }} · {{ pedido.data_pedido|date:"d/m/Y" }}</span>
+                                    </span>
+                                    <span class="badge text-bg-warning">Em análise</span>
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item text-secondary">Nenhum pedido aguardando análise.</li>
+                            {% endfor %}
+                        </ul>
+                        <div class="card-body">
+                            <a class="btn btn-sm btn-outline-success" href="/adocoes">Ver todas as adoções</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header card-title-acolhe"><i class="fas fa-home"></i> Ocupação dos abrigos</div>
+                        <div class="card-body">
+                            {% for abrigo in abrigos %}
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between small">
+                                        <span>{{ abrigo.nome }}</span>
+                                        <span>{{ abrigo.ocupados }} de {{ abrigo.capacidade }}</span>
+                                    </div>
+                                    {% widthratio abrigo.ocupados abrigo.capacidade 100 as porcentagem %}
+                                    <div class="progress" role="progressbar" aria-valuenow="{{ porcentagem }}" aria-valuemin="0" aria-valuemax="100">
+                                        <div class="progress-bar {% if abrigo.ocupados >= abrigo.capacidade %}bg-danger{% else %}bg-success{% endif %}" style="width: {{ porcentagem }}%"></div>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <p class="text-secondary mb-0">Nenhum abrigo cadastrado.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{ grafico_status|json_script:"dados-status" }}
+            {{ grafico_especies|json_script:"dados-especies" }}
+        {% endif %}
+    </main>
+{% endblock %}
+
+{% block scripts %}
+    {% if papel != 'adotante' %}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    {% endif %}
+{% endblock %}
