@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe - Espécies
+{% endblock %}
+
+{% block conteudo %}
+    <main class="container mt-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h1 class="mb-0">Espécies</h1>
+                <p class="text-secondary mb-0">Espécies de animais atendidas pela ONG.</p>
+            </div>
+            <a class="btn btn-success" href="{% url 'especie_nova' %}"><i class="fas fa-plus"></i> Nova espécie</a>
+        </div>
+
+        <div class="table-responsive mt-3">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Animais cadastrados</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for especie in especies %}
+                        <tr>
+                            <td>{{ especie.nome }}</td>
+                            <td><a href="{% url 'animais' %}?especie={{ especie.id }}">{{ especie.total }}</a></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'especie_editar' especie.id %}">Editar</a>
+                                <a class="btn btn-sm btn-outline-danger" href="{% url 'especie_excluir' especie.id %}">Excluir</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="text-secondary">Nenhuma espécie cadastrada.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+{% endblock %}
