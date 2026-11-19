@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe - Cadastro de Usuário
+{% endblock %}
+
+{% block conteudo %}
+    <main class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-9 col-lg-7">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-user-plus fa-3x text-success"></i>
+                            <h1 class="h3 mt-2">Cadastre-se</h1>
+                            <p class="text-secondary mb-0">Crie sua conta de adotante e encontre um novo amigo.</p>
+                        </div>
+                        <form action="{% url 'cadastro' %}" method="POST" onsubmit="return validaSenha()">
+                            {% csrf_token %}
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="usuario">Usuário *</label>
+                                    <input type="text" class="form-control" id="usuario" name="usuario" value="{{ form.usuario.value|default:'' }}" maxlength="150" required>
+                                    {% for erro in form.usuario.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="nome">Nome completo *</label>
+                                    <input type="text" class="form-control" id="nome" name="nome" value="{{ form.nome.value|default:'' }}" maxlength="150" required>
+                                    {% for erro in form.nome.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="email">E-mail *</label>
+                                    <input type="email" class="form-control" id="email" name="email" value="{{ form.email.value|default:'' }}" required>
+                                    {% for erro in form.email.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="telefone">Telefone</label>
+                                    <input type="text" class="form-control" id="telefone" name="telefone" value="{{ form.telefone.value|default:'' }}" maxlength="20" placeholder="(35) 99999-0000">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="senha">Senha *</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="senha" name="senha" required>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="alterarVisibilidadeSenha('senha')" title="Mostrar senha">
+                                            <i class="fa fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    {% for erro in form.senha.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="confirma_senha">Repetir senha *</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="confirma_senha" name="confirma_senha" required>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="alterarVisibilidadeSenha('confirma_senha')" title="Mostrar senha">
+                                            <i class="fa fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    {% for erro in form.confirma_senha.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
+                                </div>
+                            </div>
+                            <div id="erroSenha" class="alert alert-danger mt-3" style="display: none;">
+                                As senhas não coincidem.
+                            </div>
+                            <p class="form-text mt-3">A senha deve ter pelo menos 8 caracteres, não pode ser só números nem muito parecida com o usuário.</p>
+                            <button type="submit" class="btn btn-success w-100"><i class="fas fa-check"></i> Cadastrar</button>
+                        </form>
+                        <p class="text-center mt-3 mb-0">
+                            Já tem conta? <a href="{% url 'login' %}">Faça login</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+{% endblock %}

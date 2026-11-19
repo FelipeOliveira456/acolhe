@@ -1,232 +1,257 @@
-from django.contrib.auth import authenticate
-from django.contrib.auth import login as login_django
-from django.contrib.auth import logout as logout_django
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
-from django.http import JsonResponse
+from django.contrib.messages.views import SuccessMessageMixin
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from django.db.models import Sum
+from django.shortcuts import get_object_or_404
+from django.shortcuts import redirect
+from django.shortcuts import render
+from django.urls import reverse
+from django.urls import reverse_lazy
 from django.utils import timezone
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.generic import CreateView
+from django.views.generic import DeleteView
+from django.views.generic import ListView
+from django.views.generic import UpdateView
 
 from animais.models import Animal
-from gestao_ong.util import dados_usuario
-from gestao_ong.util import erro
-from gestao_ong.util import ler_data
-from gestao_ong.util import ler_decimal
-from gestao_ong.util import ler_json
-from gestao_ong.util import papel_de
-from gestao_ong.util import validar_senha
+from usuarios.permissoes import EQUIPE
+from usuarios.permissoes import PapelMixin
+from usuarios.permissoes import papel_de
+from usuarios.permissoes import papel_required
+from .forms import DoacaoForm
+from .forms import NovaPessoaForm
 from .models import Adocao
 from .models import Doacao
 from .models import Perfil
-from .permissoes import login_json
-from .permissoes import papel_json
 
 
-@ensure_csrf_cookie
-def csrf(request):
-    return JsonResponse({'ok': True})
+def filtros_da_busca(request):
+    parametros = request.GET.copy()
+    parametros.pop('page', None)
+    return parametros.urlencode() + '&' if parametros else ''
 
 
-def cadastro(request):
-    if request.method != 'POST':
-        return erro('Método não permitido.', 405)
-    dados = ler_json(request)
-    if dados is None:
-        return erro('Dados inválidos.')
-
-    usuario = (dados.get('usuario') or '').strip()
-    email = (dados.get('email') or '').strip()
-    senha = dados.get('senha') or ''
-    nome = (dados.get('nome') or '').strip()
-    telefone = (dados.get('telefone') or '').strip()
-
-    if not usuario or not email or not nome:
-        return erro('Informe usuário, nome e e-mail.')
-    if '@' not in email:
-        return erro('Informe um e-mail válido.')
-    mensagem = validar_senha(senha, usuario, email)
-    if mensagem:
-        return erro(mensagem)
-    if User.objects.filter(username=usuario).exists():
-        return erro('Já existe um usuário com esse nome. Tente novamente.')
-
-    user = User.objects.create_user(username=usuario, email=email, password=senha, first_name=nome)
-    Perfil.objects.create(usuario=user, papel='adotante', telefone=telefone)
-    login_django(request, user)
-    return JsonResponse(dados_usuario(user), status=201)
+def voltar_para(request, padrao):
+    destino = request.POST.get('voltar', '')
+    if url_has_allowed_host_and_scheme(destino, allowed_hosts={request.get_host()}):
+        return redirect(destino)
+    return redirect(padrao)
 
 
-def login(request):
-    if request.method != 'POST':
-        return erro('Método não permitido.', 405)
-    dados = ler_json(request)
-    if dados is None:
-        return erro('Dados inválidos.')
+class AdocaoListView(LoginRequiredMixin, ListView):
+    template_name = 'adocoes.html'
+    context_object_name = 'adocoes'
+    paginate_by = 15
 
-    usuario = (dados.get('usuario') or '').strip()
-    senha = dados.get('senha') or ''
-    user = authenticate(username=usuario, password=senha)
-    if user:
-        login_django(request, user)
-        return JsonResponse(dados_usuario(user))
-    return erro('Usuário ou senha inválidos. Tente novamente.')
-
-
-def logout(request):
-    if request.method != 'POST':
-        return erro('Método não permitido.', 405)
-    logout_django(request)
-    return JsonResponse({'ok': True})
-
-
-@ensure_csrf_cookie
-def me(request):
-    if not request.user.is_authenticated:
-        return erro('Faça login para continuar.', 401)
-    return JsonResponse(dados_usuario(request.user))
-
-
-@login_json
-def painel(request):
-    if request.method != 'GET':
-        return erro('Método não permitido.', 405)
-    papel = papel_de(request.user)
-    dados = {
-        'disponiveis': Animal.objects.filter(status='disponivel').count(),
-        'em_tratamento': Animal.objects.filter(status='em_tratamento').count(),
-        'adotados': Animal.objects.filter(status='adotado').count(),
-    }
-    if papel == 'adotante':
-        dados['minhas_adocoes'] = Adocao.objects.filter(solicitante=request.user).count()
-        dados['em_analise'] = Adocao.objects.filter(solicitante=request.user, status='analise').count()
-    else:
-        dados['em_analise'] = Adocao.objects.filter(status='analise').count()
-        dados['doacoes'] = Doacao.objects.count()
-    return JsonResponse(dados)
-
-
-@login_json
-def adocoes(request):
-    if request.method == 'GET':
+    def get_queryset(self):
         consulta = Adocao.objects.select_related('animal', 'animal__especie', 'solicitante')
-        if papel_de(request.user) == 'adotante':
-            consulta = consulta.filter(solicitante=request.user)
-        return JsonResponse([item.como_dict() for item in consulta], safe=False)
+        filtros = self.request.GET
+        if papel_de(self.request.user) in EQUIPE:
+            if filtros.get('q'):
+                consulta = consulta.filter(
+                    Q(animal__nome__icontains=filtros['q'])
+                    | Q(solicitante__username__icontains=filtros['q'])
+                    | Q(solicitante__first_name__icontains=filtros['q'])
+                )
+        else:
+            consulta = consulta.filter(solicitante=self.request.user)
+        if filtros.get('status'):
+            consulta = consulta.filter(status=filtros['status'])
+        return consulta
 
-    if request.method == 'POST':
-        if papel_de(request.user) != 'adotante':
-            return erro('Apenas adotantes podem solicitar adoção.', 403)
-        dados = ler_json(request)
-        if dados is None:
-            return erro('Dados inválidos.')
-        animal = Animal.objects.filter(id=dados.get('animal_id')).first()
-        if not animal:
-            return erro('Animal não encontrado.', 404)
-        if animal.status != 'disponivel':
-            return erro('Este animal não está disponível para adoção.')
-        if Adocao.objects.filter(animal=animal, solicitante=request.user, status='analise').exists():
-            return erro('Você já possui um pedido em análise para este animal.')
-        item = Adocao.objects.create(
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'busca': self.request.GET,
+            'filtros': filtros_da_busca(self.request),
+            'situacoes': Adocao.STATUS,
+        })
+        return context
+
+
+@papel_required('adotante')
+def adocao_solicitar(request, animal_id):
+    animal = get_object_or_404(Animal, pk=animal_id)
+    if request.method != 'POST':
+        return redirect(animal)
+    if animal.status != 'disponivel':
+        messages.error(request, 'Este animal não está disponível para adoção.')
+    elif Adocao.objects.filter(animal=animal, solicitante=request.user, status='analise').exists():
+        messages.warning(request, 'Você já tem um pedido em análise para este animal.')
+    else:
+        Adocao.objects.create(
             animal=animal,
             solicitante=request.user,
             data_pedido=timezone.localdate(),
-            observacao=(dados.get('observacao') or '').strip(),
+            observacao=request.POST.get('observacao', '').strip()[:1000],
         )
-        return JsonResponse(item.como_dict(), status=201)
-    return erro('Método não permitido.', 405)
+        messages.success(request, f'Pedido de adoção de {animal.nome} enviado! Acompanhe a resposta nesta página.')
+        return redirect('adocoes')
+    return redirect(animal)
 
 
-@papel_json('gestor')
-def adocao_detalhe(request, id):
-    if request.method != 'PUT':
-        return erro('Método não permitido.', 405)
-    adocao = Adocao.objects.select_related('animal').filter(id=id).first()
-    if not adocao:
-        return erro('Adoção não encontrada.', 404)
-    dados = ler_json(request)
-    if dados is None:
-        return erro('Dados inválidos.')
-    status = dados.get('status')
-    if status not in dict(Adocao.STATUS):
-        return erro('Selecione um status válido.')
-    if status == 'aprovada' and adocao.animal.status != 'disponivel' and adocao.status != 'aprovada':
-        return erro('Este animal não está mais disponível.')
-
-    adocao.status = status
-    adocao.save()
-    return JsonResponse(adocao.como_dict())
-
-
-@papel_json('voluntario', 'gestor')
-def doacoes(request):
-    if request.method == 'GET':
-        lista = [item.como_dict() for item in Doacao.objects.select_related('registrado_por')]
-        return JsonResponse(lista, safe=False)
-    if request.method != 'POST':
-        return erro('Método não permitido.', 405)
-
-    dados = ler_json(request)
-    if dados is None:
-        return erro('Dados inválidos.')
-    doador = (dados.get('doador_nome') or '').strip()
-    tipo = dados.get('tipo')
-    data = ler_data(dados.get('data'))
-    if not doador or tipo not in dict(Doacao.TIPO) or not data:
-        return erro('Informe o doador, o tipo e a data.')
-    valor = ler_decimal(dados.get('valor'))
-    if dados.get('valor') not in (None, '') and (valor is None or valor < 0):
-        return erro('Informe um valor válido.')
-
-    item = Doacao.objects.create(
-        doador_nome=doador,
-        tipo=tipo,
-        valor=valor,
-        descricao=(dados.get('descricao') or '').strip(),
-        data=data,
-        registrado_por=request.user,
-    )
-    return JsonResponse(item.como_dict(), status=201)
+@papel_required('gestor')
+def adocao_status(request, pk):
+    adocao = get_object_or_404(Adocao.objects.select_related('animal'), pk=pk)
+    status = request.POST.get('status')
+    if request.method == 'POST' and status in dict(Adocao.STATUS):
+        adocao.status = status
+        try:
+            adocao.full_clean()
+        except ValidationError as e:
+            messages.error(request, e.messages[0])
+        else:
+            adocao.save()
+            avisos = {
+                'aprovada': f'Adoção de {adocao.animal.nome} aprovada! Os outros pedidos em análise foram recusados.',
+                'recusada': f'Pedido de adoção de {adocao.animal.nome} recusado.',
+                'analise': f'Pedido de adoção de {adocao.animal.nome} voltou para análise.',
+            }
+            messages.success(request, avisos[status])
+    return voltar_para(request, 'adocoes')
 
 
-@papel_json('gestor')
-def voluntarios(request):
-    if request.method == 'GET':
-        perfis = Perfil.objects.filter(papel='voluntario').select_related('usuario')
-        lista = [{
-            'id': item.id,
-            'usuario': item.usuario.username,
-            'nome': item.usuario.first_name,
-            'email': item.usuario.email,
-            'telefone': item.telefone,
-        } for item in perfis]
-        return JsonResponse(lista, safe=False)
+@papel_required('adotante')
+def adocao_cancelar(request, pk):
+    adocao = get_object_or_404(Adocao, pk=pk, solicitante=request.user)
+    if request.method == 'POST':
+        if adocao.status == 'analise':
+            adocao.delete()
+            messages.success(request, 'Pedido de adoção cancelado.')
+        else:
+            messages.error(request, 'Só é possível cancelar pedidos que ainda estão em análise.')
+    return redirect('adocoes')
 
-    if request.method != 'POST':
-        return erro('Método não permitido.', 405)
-    dados = ler_json(request)
-    if dados is None:
-        return erro('Dados inválidos.')
 
-    usuario = (dados.get('usuario') or '').strip()
-    email = (dados.get('email') or '').strip()
-    senha = dados.get('senha') or ''
-    nome = (dados.get('nome') or '').strip()
-    telefone = (dados.get('telefone') or '').strip()
-    if not usuario or not email or not nome:
-        return erro('Informe usuário, nome e e-mail.')
-    if '@' not in email:
-        return erro('Informe um e-mail válido.')
-    mensagem = validar_senha(senha, usuario, email)
-    if mensagem:
-        return erro(mensagem)
-    if User.objects.filter(username=usuario).exists():
-        return erro('Já existe um usuário com esse nome. Tente novamente.')
+class DoacaoListView(PapelMixin, ListView):
+    papeis = EQUIPE
+    template_name = 'doacoes.html'
+    context_object_name = 'doacoes'
+    paginate_by = 15
 
-    user = User.objects.create_user(username=usuario, email=email, password=senha, first_name=nome)
-    perfil = Perfil.objects.create(usuario=user, papel='voluntario', telefone=telefone)
-    return JsonResponse({
-        'id': perfil.id,
-        'usuario': user.username,
-        'nome': user.first_name,
-        'email': user.email,
-        'telefone': perfil.telefone,
-    }, status=201)
+    def get_queryset(self):
+        consulta = Doacao.objects.select_related('registrado_por')
+        filtros = self.request.GET
+        if filtros.get('tipo'):
+            consulta = consulta.filter(tipo=filtros['tipo'])
+        if filtros.get('q'):
+            consulta = consulta.filter(Q(doador_nome__icontains=filtros['q']) | Q(descricao__icontains=filtros['q']))
+        return consulta
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'busca': self.request.GET,
+            'filtros': filtros_da_busca(self.request),
+            'tipos': Doacao.TIPO,
+            'total': self.object_list.filter(tipo='dinheiro').aggregate(total=Sum('valor'))['total'] or 0,
+        })
+        return context
+
+
+class DoacaoCreateView(PapelMixin, SuccessMessageMixin, CreateView):
+    papeis = EQUIPE
+    model = Doacao
+    form_class = DoacaoForm
+    template_name = 'formulario.html'
+    success_url = reverse_lazy('doacoes')
+    success_message = 'Doação registrada com sucesso!'
+    extra_context = {
+        'titulo': 'Nova doação',
+        'icone': 'fa-gift',
+        'voltar': reverse_lazy('doacoes'),
+    }
+
+    def get_initial(self):
+        return {'data': timezone.localdate()}
+
+    def form_valid(self, form):
+        form.instance.registrado_por = self.request.user
+        return super().form_valid(form)
+
+
+class DoacaoUpdateView(PapelMixin, SuccessMessageMixin, UpdateView):
+    papeis = EQUIPE
+    model = Doacao
+    form_class = DoacaoForm
+    template_name = 'formulario.html'
+    success_url = reverse_lazy('doacoes')
+    success_message = 'Doação atualizada com sucesso!'
+    extra_context = {
+        'titulo': 'Editar doação',
+        'icone': 'fa-gift',
+        'voltar': reverse_lazy('doacoes'),
+    }
+
+
+class DoacaoDeleteView(PapelMixin, SuccessMessageMixin, DeleteView):
+    papeis = ('gestor',)
+    model = Doacao
+    template_name = 'confirmar_exclusao.html'
+    success_url = reverse_lazy('doacoes')
+    success_message = 'Doação excluída com sucesso!'
+    extra_context = {
+        'voltar': reverse_lazy('doacoes'),
+    }
+
+
+class PessoaListView(PapelMixin, ListView):
+    papeis = ('gestor',)
+    template_name = 'pessoas.html'
+    context_object_name = 'pessoas'
+    paginate_by = 15
+
+    def get_queryset(self):
+        consulta = User.objects.select_related('perfil').order_by('first_name', 'username')
+        filtros = self.request.GET
+        if filtros.get('papel'):
+            consulta = consulta.filter(perfil__papel=filtros['papel'])
+        if filtros.get('q'):
+            consulta = consulta.filter(
+                Q(username__icontains=filtros['q'])
+                | Q(first_name__icontains=filtros['q'])
+                | Q(email__icontains=filtros['q'])
+            )
+        return consulta
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'busca': self.request.GET,
+            'filtros': filtros_da_busca(self.request),
+            'papeis': Perfil.PAPEL,
+        })
+        return context
+
+
+@papel_required('gestor')
+def pessoa_nova(request):
+    form = NovaPessoaForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        user = form.salvar(papel=form.cleaned_data['papel'])
+        messages.success(request, f'Conta de {user.first_name} criada com sucesso!')
+        return redirect('pessoas')
+    context = {
+        'form': form,
+        'titulo': 'Nova pessoa da equipe',
+        'icone': 'fa-user-plus',
+        'voltar': reverse('pessoas'),
+    }
+    return render(request, 'formulario.html', context)
+
+
+@papel_required('gestor')
+def pessoa_papel(request, pk):
+    pessoa = get_object_or_404(User, pk=pk)
+    papel = request.POST.get('papel')
+    if request.method == 'POST' and papel in dict(Perfil.PAPEL):
+        if pessoa == request.user:
+            messages.error(request, 'Você não pode alterar o seu próprio papel.')
+        else:
+            Perfil.objects.update_or_create(usuario=pessoa, defaults={'papel': papel})
+            messages.success(request, f'{pessoa.first_name or pessoa.username} agora é {dict(Perfil.PAPEL)[papel].lower()}.')
+    return voltar_para(request, 'pessoas')

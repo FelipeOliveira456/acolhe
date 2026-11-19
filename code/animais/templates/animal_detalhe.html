@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe - {{ animal.nome }}
+{% endblock %}
+
+{% block conteudo %}
+    <main class="container mt-4">
+        <a href="{% url 'animais' %}"><i class="fas fa-arrow-left"></i> Voltar para animais</a>
+
+        <div class="row g-4 mt-1">
+            <div class="col-lg-5">
+                {% include "_foto_animal.html" with animal=animal classe="grande shadow-sm" %}
+            </div>
+            <div class="col-lg-7">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div>
+                        <h1 class="mb-1">{{ animal.nome }}</h1>
+                        <span class="badge text-bg-{{ animal.cor_status }} fs-6">{{ animal.get_status_display }}</span>
+                    </div>
+                    {% if equipe %}
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-outline-secondary" href="{% url 'animal_editar' animal.id %}"><i class="fas fa-pen"></i> Editar</a>
+                            {% if papel == 'gestor' %}
+                                <a class="btn btn-outline-danger" href="{% url 'animal_excluir' animal.id %}"><i class="fas fa-trash"></i> Excluir</a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <table class="table mt-3">
+                    <tbody>
+                        <tr><th class="w-25">Espécie</th><td>{{ animal.especie }}</td></tr>
+                        <tr><th>Sexo</th><td>{{ animal.get_sexo_display }}</td></tr>
+                        <tr><th>Porte</th><td>{{ animal.get_porte_display }}</td></tr>
+                        <tr><th>Castrado</th><td>{{ animal.castrado|yesno:"Sim,Não" }}</td></tr>
+                        <tr><th>Abrigo</th><td>{{ animal.abrigo.nome }} ({{ animal.abrigo.cidade }})</td></tr>
+                        <tr><th>Na ONG desde</th><td>{{ animal.data_entrada|date:"d/m/Y" }}</td></tr>
+                    </tbody>
+                </table>
+                {% if animal.descricao %}
+                    <p>{{ animal.descricao|linebreaksbr }}</p>
+                {% endif %}
+
+                {% if papel == 'adotante' %}
+                    {% if meu_pedido and meu_pedido.status != 'recusada' %}
+                        <div class="alert alert-{{ meu_pedido.cor_status }}">
+                            <i class="fas fa-heart"></i>
+                            Seu pedido de {{ meu_pedido.data_pedido|date:"d/m/Y" }} está: <strong>{{ meu_pedido.get_status_display|lower }}</strong>.
+                            <a href="/adocoes">Ver meus pedidos</a>
+                        </div>
+                    {% elif animal.status == 'disponivel' %}
+                        <div class="card shadow-sm">
+                            <div class="card-header card-title-acolhe"><i class="fas fa-heart"></i> Quero adotar {{ animal.nome }}</div>
+                            <div class="card-body">
+                                <form action="{% url 'adocao_solicitar' animal.id %}" method="POST">
+                                    {% csrf_token %}
+                                    <label class="form-label" for="observacao">Conte um pouco sobre você e sua casa (opcional)</label>
+                                    <textarea class="form-control" id="observacao" name="observacao" rows="3" maxlength="1000" placeholder="Ex.: moro em casa com quintal, já tenho um gato..."></textarea>
+                                    <button class="btn btn-success mt-3" type="submit"><i class="fas fa-paper-plane"></i> Enviar pedido de adoção</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        {% if equipe %}
+            <div class="row g-4 mt-2">
+                <div class="col-lg-7">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header card-title-acolhe"><i class="fas fa-notes-medical"></i> Prontuário veterinário</div>
+                        <ul class="list-group list-group-flush">
+                            {% for item in prontuarios %}
+                                <li class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>{{ item.data|date:"d/m/Y" }} · {{ item.veterinario }}</strong>
+                                        {% if papel == 'gestor' %}
+                                            <a class="text-danger" href="{% url 'prontuario_excluir' item.id %}" title="Excluir registro"><i class="fas fa-trash"></i></a>
+                                        {% endif %}
+                                    </div>
+                                    <div>{{ item.descricao|linebreaksbr }}</div>
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item text-secondary">Nenhum atendimento registrado.</li>
+                            {% endfor %}
+                        </ul>
+                        <div class="card-body border-top">
+                            <h6>Novo atendimento</h6>
+                            <form action="{% url 'prontuario_novo' animal.id %}" method="POST">
+                                {% csrf_token %}
+                                <div class="row g-2">
+                                    <div class="col-md-4">{{ form_prontuario.data }}</div>
+                                    <div class="col-md-8">{{ form_prontuario.veterinario }}</div>
+                                    <div class="col-12">{{ form_prontuario.descricao }}</div>
+                                </div>
+                                <button class="btn btn-success btn-sm mt-2" type="submit"><i class="fas fa-plus"></i> Registrar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header card-title-acolhe"><i class="fas fa-heart"></i> Pedidos de adoção</div>
+                        <ul class="list-group list-group-flush">
+                            {% for adocao in adocoes %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        {{ adocao.solicitante.first_name|default:adocao.solicitante.username }}
+                                        <span class="small text-secondary d-block">{{ adocao.data_pedido|date:"d/m/Y" }}</span>
+                                    </span>
+                                    <span class="badge text-bg-{{ adocao.cor_status }}">{{ adocao.get_status_display }}</span>
+                                </li>
+                            {% empty %}
+                                <li class="list-group-item text-secondary">Nenhum pedido para este animal.</li>
+                            {% endfor %}
+                        </ul>
+                        {% if adocoes %}
+                            <div class="card-body">
+                                <a class="btn btn-sm btn-outline-success" href="/adocoes?q={{ animal.nome|urlencode }}">Gerenciar pedidos</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </main>
+{% endblock %}

@@ -5,7 +5,5 @@ db.sqlite3
 venv/
 .venv/
 env/
-node_modules/
-frontend/dist/
+media/
 .DS_Store
-.playwright-cli/

@@ -1,12 +1,15 @@
-from django.http import FileResponse, HttpResponse
-from django.conf import settings
+from django.shortcuts import render
+
+from animais.models import Abrigo
+from animais.models import Animal
+from pessoas.models import Adocao
 
 
-def spa(request):
-    index = settings.BASE_DIR / 'static' / 'spa' / 'index.html'
-    if not index.exists():
-        return HttpResponse(
-            'Interface ainda não gerada. Na pasta frontend, execute npm install e npm run build.',
-            status=503,
-        )
-    return FileResponse(open(index, 'rb'))
+def principal(request):
+    context = {
+        'disponiveis': Animal.objects.filter(status='disponivel').count(),
+        'adotados': Adocao.objects.filter(status='aprovada').count(),
+        'abrigos': Abrigo.objects.count(),
+        'animais': Animal.objects.filter(status='disponivel').select_related('especie').order_by('-data_entrada')[:4],
+    }
+    return render(request, 'principal.html', context)

@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 
+from django.contrib.messages import constants as messages
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -40,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'animais',
     'pessoas',
+    'usuarios',
 ]
 
 MIDDLEWARE = [
@@ -57,13 +60,14 @@ ROOT_URLCONF = 'gestao_ong.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'usuarios.context_processors.papel',
             ],
         },
     },
@@ -123,12 +127,21 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1:5173',
-    'http://localhost:5173',
-]
+
+# Autenticação
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'painel'
+LOGOUT_REDIRECT_URL = 'principal'
+
+MESSAGE_TAGS = {
+    messages.ERROR: 'danger',
+}
 
 
 # Email
@@ -147,8 +160,14 @@ JAZZMIN_SETTINGS = {
     "welcome_sign": "Bem-vindo à gestão da ONG animal",
     "copyright": "GAC116 - Programação Web",
     "search_model": ["animais.Animal", "pessoas.Adocao"],
+    "topmenu_links": [
+        {"name": "Início", "url": "admin:index"},
+        {"name": "Ver o site", "url": "/", "new_window": True},
+    ],
     "order_with_respect_to": ["animais", "pessoas", "auth"],
     "icons": {
+        "auth.User": "fas fa-user",
+        "auth.Group": "fas fa-users",
         "animais.Especie": "fas fa-paw",
         "animais.Abrigo": "fas fa-home",
         "animais.Animal": "fas fa-dog",
@@ -161,8 +180,8 @@ JAZZMIN_SETTINGS = {
 
 JAZZMIN_UI_TWEAKS = {
     "theme": "flatly",
-    "dark_mode_theme": "darkly",
-    "navbar": "navbar-dark bg-success",
+    "default_theme_mode": "auto",
+    "navbar": "navbar-white navbar-light",
     "sidebar": "sidebar-dark-success",
     "footer_fixed": True,
 }

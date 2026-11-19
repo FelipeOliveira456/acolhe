@@ -1,216 +1,268 @@
-from django.core.exceptions import ValidationError
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.messages.views import SuccessMessageMixin
+from django.db.models import Count
 from django.db.models import ProtectedError
-from django.http import JsonResponse
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.shortcuts import redirect
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.generic import CreateView
+from django.views.generic import DeleteView
+from django.views.generic import DetailView
+from django.views.generic import ListView
+from django.views.generic import UpdateView
 
-from gestao_ong.util import erro
-from gestao_ong.util import ler_data
-from gestao_ong.util import ler_json
-from gestao_ong.util import papel_de
-from pessoas.permissoes import login_json
-from pessoas.permissoes import papel_json
+from usuarios.permissoes import EQUIPE
+from usuarios.permissoes import PapelMixin
+from usuarios.permissoes import papel_de
+from usuarios.permissoes import papel_required
+from .forms import AbrigoForm
+from .forms import AnimalForm
+from .forms import EspecieForm
+from .forms import ProntuarioForm
 from .models import Abrigo
 from .models import Animal
 from .models import Especie
 from .models import Prontuario
 
 
-def escolha_valida(valor, opcoes):
-    return valor in dict(opcoes)
+class ExclusaoMixin(PapelMixin, SuccessMessageMixin):
+    papeis = ('gestor',)
+    template_name = 'confirmar_exclusao.html'
+    mensagem_protegido = 'Não é possível excluir este registro.'
 
+    def get_voltar(self):
+        return self.get_success_url()
 
-def montar_animal(dados, animal=None):
-    nome = (dados.get('nome') or '').strip()
-    if not nome:
-        return None, 'Informe o nome do animal.'
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['voltar'] = self.get_voltar()
+        return context
 
-    especie = Especie.objects.filter(id=dados.get('especie_id')).first()
-    abrigo = Abrigo.objects.filter(id=dados.get('abrigo_id')).first()
-    if not especie or not abrigo:
-        return None, 'Selecione a espécie e o abrigo.'
-
-    if not escolha_valida(dados.get('sexo'), Animal.SEXO):
-        return None, 'Selecione o sexo.'
-    if not escolha_valida(dados.get('porte'), Animal.PORTE):
-        return None, 'Selecione o porte.'
-    if not escolha_valida(dados.get('status'), Animal.STATUS):
-        return None, 'Selecione o status.'
-
-    data_entrada = ler_data(dados.get('data_entrada'))
-    if not data_entrada:
-        return None, 'Informe a data de entrada.'
-
-    if animal is None:
-        animal = Animal()
-    animal.nome = nome
-    animal.especie = especie
-    animal.abrigo = abrigo
-    animal.sexo = dados.get('sexo')
-    animal.porte = dados.get('porte')
-    animal.status = dados.get('status')
-    animal.data_entrada = data_entrada
-    animal.castrado = bool(dados.get('castrado'))
-    animal.descricao = (dados.get('descricao') or '').strip()
-    try:
-        animal.clean()
-    except ValidationError as e:
-        return None, e.messages[0]
-    return animal, None
-
-
-@login_json
-def especies(request):
-    if request.method != 'GET':
-        return erro('Método não permitido.', 405)
-    lista = [{'id': item.id, 'nome': item.nome} for item in Especie.objects.all()]
-    return JsonResponse(lista, safe=False)
-
-
-@login_json
-def abrigos(request):
-    if request.method == 'GET':
-        lista = [item.como_dict() for item in Abrigo.objects.all()]
-        return JsonResponse(lista, safe=False)
-    if request.method == 'POST':
-        return salvar_abrigo(request, None)
-    return erro('Método não permitido.', 405)
-
-
-@papel_json('gestor')
-def abrigo_detalhe(request, id):
-    abrigo = Abrigo.objects.filter(id=id).first()
-    if not abrigo:
-        return erro('Abrigo não encontrado.', 404)
-    if request.method == 'PUT':
-        return salvar_abrigo(request, abrigo)
-    if request.method == 'DELETE':
+    def form_valid(self, form):
         try:
-            abrigo.delete()
+            return super().form_valid(form)
         except ProtectedError:
-            return erro('Não é possível excluir: existem animais neste abrigo.')
-        return JsonResponse({'ok': True})
-    return erro('Método não permitido.', 405)
+            messages.error(self.request, self.mensagem_protegido)
+            return redirect(self.get_voltar())
 
 
-def salvar_abrigo(request, abrigo):
-    if papel_de(request.user) != 'gestor':
-        return erro('Você não tem permissão para esta ação.', 403)
-    dados = ler_json(request)
-    if dados is None:
-        return erro('Dados inválidos.')
+class AnimalListView(LoginRequiredMixin, ListView):
+    model = Animal
+    template_name = 'animais.html'
+    context_object_name = 'animais'
+    paginate_by = 12
 
-    nome = (dados.get('nome') or '').strip()
-    cidade = (dados.get('cidade') or '').strip()
-    endereco = (dados.get('endereco') or '').strip()
-    if not nome or not cidade or not endereco:
-        return erro('Informe nome, cidade e endereço.')
-    try:
-        capacidade = int(dados.get('capacidade'))
-    except (TypeError, ValueError):
-        return erro('Informe a capacidade.')
-    if capacidade < 1:
-        return erro('A capacidade deve ser maior que zero.')
-
-    if abrigo is None:
-        abrigo = Abrigo()
-    abrigo.nome = nome
-    abrigo.cidade = cidade
-    abrigo.endereco = endereco
-    abrigo.capacidade = capacidade
-    abrigo.save()
-    return JsonResponse(abrigo.como_dict())
-
-
-@login_json
-def animais(request):
-    if request.method == 'GET':
+    def get_queryset(self):
         consulta = Animal.objects.select_related('especie', 'abrigo')
-        if papel_de(request.user) == 'adotante':
-            consulta = consulta.filter(status='disponivel')
+        filtros = self.request.GET
+        if papel_de(self.request.user) in EQUIPE:
+            if filtros.get('status'):
+                consulta = consulta.filter(status=filtros['status'])
+            if filtros.get('abrigo', '').isdigit():
+                consulta = consulta.filter(abrigo_id=filtros['abrigo'])
         else:
-            status = request.GET.get('status', '').strip()
-            if status:
-                consulta = consulta.filter(status=status)
-        especie = request.GET.get('especie', '').strip()
-        if especie:
-            consulta = consulta.filter(especie_id=especie)
-        q = request.GET.get('q', '').strip()
-        if q:
-            consulta = consulta.filter(nome__icontains=q)
-        return JsonResponse([item.como_dict() for item in consulta], safe=False)
+            consulta = consulta.filter(status='disponivel')
+        if filtros.get('especie', '').isdigit():
+            consulta = consulta.filter(especie_id=filtros['especie'])
+        if filtros.get('porte'):
+            consulta = consulta.filter(porte=filtros['porte'])
+        if filtros.get('sexo'):
+            consulta = consulta.filter(sexo=filtros['sexo'])
+        if filtros.get('q'):
+            consulta = consulta.filter(Q(nome__icontains=filtros['q']) | Q(descricao__icontains=filtros['q']))
+        return consulta
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        parametros = self.request.GET.copy()
+        parametros.pop('page', None)
+        context.update({
+            'busca': self.request.GET,
+            'filtros': parametros.urlencode() + '&' if parametros else '',
+            'especies': Especie.objects.all(),
+            'abrigos': Abrigo.objects.all(),
+            'sexos': Animal.SEXO,
+            'portes': Animal.PORTE,
+            'situacoes': Animal.STATUS,
+        })
+        return context
+
+
+class AnimalDetailView(LoginRequiredMixin, DetailView):
+    model = Animal
+    template_name = 'animal_detalhe.html'
+    context_object_name = 'animal'
+
+    def get_queryset(self):
+        consulta = Animal.objects.select_related('especie', 'abrigo')
+        if papel_de(self.request.user) not in EQUIPE:
+            consulta = consulta.filter(Q(status='disponivel') | Q(adocoes__solicitante=self.request.user)).distinct()
+        return consulta
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        animal = self.object
+        if papel_de(self.request.user) in EQUIPE:
+            context['prontuarios'] = animal.prontuarios.all()
+            context['form_prontuario'] = ProntuarioForm(initial={'data': timezone.localdate()})
+            context['adocoes'] = animal.adocoes.select_related('solicitante')
+        else:
+            context['meu_pedido'] = animal.adocoes.filter(solicitante=self.request.user).order_by('-data_pedido', '-id').first()
+        return context
+
+
+class AnimalCreateView(PapelMixin, SuccessMessageMixin, CreateView):
+    papeis = EQUIPE
+    model = Animal
+    form_class = AnimalForm
+    template_name = 'formulario.html'
+    success_message = 'Animal cadastrado com sucesso!'
+    extra_context = {
+        'titulo': 'Novo animal',
+        'icone': 'fa-dog',
+        'voltar': reverse_lazy('animais'),
+    }
+
+
+class AnimalUpdateView(PapelMixin, SuccessMessageMixin, UpdateView):
+    papeis = EQUIPE
+    model = Animal
+    form_class = AnimalForm
+    template_name = 'formulario.html'
+    success_message = 'Dados do animal atualizados com sucesso!'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'titulo': f'Editar {self.object.nome}',
+            'icone': 'fa-dog',
+            'voltar': self.object.get_absolute_url(),
+        })
+        return context
+
+
+class AnimalDeleteView(ExclusaoMixin, DeleteView):
+    model = Animal
+    success_url = reverse_lazy('animais')
+    success_message = 'Animal excluído com sucesso!'
+    mensagem_protegido = 'Não é possível excluir: este animal possui pedidos de adoção.'
+
+    def get_voltar(self):
+        return self.object.get_absolute_url()
+
+
+@papel_required(*EQUIPE)
+def prontuario_novo(request, pk):
+    animal = get_object_or_404(Animal, pk=pk)
     if request.method == 'POST':
-        if papel_de(request.user) not in ('voluntario', 'gestor'):
-            return erro('Você não tem permissão para esta ação.', 403)
-        dados = ler_json(request)
-        if dados is None:
-            return erro('Dados inválidos.')
-        animal, mensagem = montar_animal(dados)
-        if mensagem:
-            return erro(mensagem)
-        animal.save()
-        return JsonResponse(animal.como_dict(), status=201)
-    return erro('Método não permitido.', 405)
+        form = ProntuarioForm(request.POST)
+        if form.is_valid():
+            prontuario = form.save(commit=False)
+            prontuario.animal = animal
+            prontuario.save()
+            messages.success(request, 'Registro adicionado ao prontuário.')
+        else:
+            messages.error(request, 'Preencha a data, o veterinário e a descrição do atendimento.')
+    return redirect(animal)
 
 
-@login_json
-def animal_detalhe(request, id):
-    animal = Animal.objects.select_related('especie', 'abrigo').filter(id=id).first()
-    if not animal:
-        return erro('Animal não encontrado.', 404)
+class ProntuarioDeleteView(ExclusaoMixin, DeleteView):
+    model = Prontuario
+    success_message = 'Registro do prontuário excluído.'
 
-    if request.method == 'GET':
-        if papel_de(request.user) == 'adotante' and animal.status != 'disponivel':
-            if not animal.adocoes.filter(solicitante=request.user).exists():
-                return erro('Você não tem permissão para ver este animal.', 403)
-        animal = Animal.objects.select_related('especie', 'abrigo').prefetch_related('prontuarios').get(id=id)
-        mostrar = papel_de(request.user) != 'adotante'
-        return JsonResponse(animal.como_dict(com_prontuario=mostrar))
-
-    if papel_de(request.user) not in ('voluntario', 'gestor'):
-        return erro('Você não tem permissão para esta ação.', 403)
-
-    if request.method == 'PUT':
-        dados = ler_json(request)
-        if dados is None:
-            return erro('Dados inválidos.')
-        animal, mensagem = montar_animal(dados, animal)
-        if mensagem:
-            return erro(mensagem)
-        animal.save()
-        return JsonResponse(animal.como_dict())
-
-    if request.method == 'DELETE':
-        if papel_de(request.user) != 'gestor':
-            return erro('Você não tem permissão para esta ação.', 403)
-        try:
-            animal.delete()
-        except ProtectedError:
-            return erro('Não é possível excluir: este animal possui adoções.')
-        return JsonResponse({'ok': True})
-    return erro('Método não permitido.', 405)
+    def get_success_url(self):
+        return self.object.animal.get_absolute_url()
 
 
-@papel_json('voluntario', 'gestor')
-def prontuarios(request):
-    if request.method != 'POST':
-        return erro('Método não permitido.', 405)
-    dados = ler_json(request)
-    if dados is None:
-        return erro('Dados inválidos.')
+class AbrigoListView(PapelMixin, ListView):
+    papeis = EQUIPE
+    template_name = 'abrigos.html'
+    context_object_name = 'abrigos'
 
-    animal = Animal.objects.filter(id=dados.get('animal_id')).first()
-    if not animal:
-        return erro('Animal não encontrado.', 404)
-    data = ler_data(dados.get('data'))
-    veterinario = (dados.get('veterinario') or '').strip()
-    descricao = (dados.get('descricao') or '').strip()
-    if not data or not veterinario or not descricao:
-        return erro('Informe a data, o veterinário e a descrição.')
+    def get_queryset(self):
+        return Abrigo.objects.annotate(
+            ocupados=Count('animais', filter=~Q(animais__status='adotado')),
+            total=Count('animais'),
+        )
 
-    item = Prontuario.objects.create(
-        animal=animal,
-        data=data,
-        veterinario=veterinario,
-        descricao=descricao,
-    )
-    return JsonResponse(item.como_dict(), status=201)
+
+class AbrigoCreateView(PapelMixin, SuccessMessageMixin, CreateView):
+    papeis = ('gestor',)
+    model = Abrigo
+    form_class = AbrigoForm
+    template_name = 'formulario.html'
+    success_url = reverse_lazy('abrigos')
+    success_message = 'Abrigo cadastrado com sucesso!'
+    extra_context = {
+        'titulo': 'Novo abrigo',
+        'icone': 'fa-home',
+        'voltar': reverse_lazy('abrigos'),
+    }
+
+
+class AbrigoUpdateView(PapelMixin, SuccessMessageMixin, UpdateView):
+    papeis = ('gestor',)
+    model = Abrigo
+    form_class = AbrigoForm
+    template_name = 'formulario.html'
+    success_url = reverse_lazy('abrigos')
+    success_message = 'Abrigo atualizado com sucesso!'
+    extra_context = {
+        'titulo': 'Editar abrigo',
+        'icone': 'fa-home',
+        'voltar': reverse_lazy('abrigos'),
+    }
+
+
+class AbrigoDeleteView(ExclusaoMixin, DeleteView):
+    model = Abrigo
+    success_url = reverse_lazy('abrigos')
+    success_message = 'Abrigo excluído com sucesso!'
+    mensagem_protegido = 'Não é possível excluir: existem animais cadastrados neste abrigo.'
+
+
+class EspecieListView(PapelMixin, ListView):
+    papeis = ('gestor',)
+    template_name = 'especies.html'
+    context_object_name = 'especies'
+
+    def get_queryset(self):
+        return Especie.objects.annotate(total=Count('animais'))
+
+
+class EspecieCreateView(PapelMixin, SuccessMessageMixin, CreateView):
+    papeis = ('gestor',)
+    model = Especie
+    form_class = EspecieForm
+    template_name = 'formulario.html'
+    success_url = reverse_lazy('especies')
+    success_message = 'Espécie cadastrada com sucesso!'
+    extra_context = {
+        'titulo': 'Nova espécie',
+        'icone': 'fa-tags',
+        'voltar': reverse_lazy('especies'),
+    }
+
+
+class EspecieUpdateView(PapelMixin, SuccessMessageMixin, UpdateView):
+    papeis = ('gestor',)
+    model = Especie
+    form_class = EspecieForm
+    template_name = 'formulario.html'
+    success_url = reverse_lazy('especies')
+    success_message = 'Espécie atualizada com sucesso!'
+    extra_context = {
+        'titulo': 'Editar espécie',
+        'icone': 'fa-tags',
+        'voltar': reverse_lazy('especies'),
+    }
+
+
+class EspecieDeleteView(ExclusaoMixin, DeleteView):
+    model = Especie
+    success_url = reverse_lazy('especies')
+    success_message = 'Espécie excluída com sucesso!'
+    mensagem_protegido = 'Não é possível excluir: existem animais cadastrados com esta espécie.'
