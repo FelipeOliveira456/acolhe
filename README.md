@@ -1,4 +1,4 @@
-# Trabalho Prático 1 - Acolhe: Sistema de Gestão de ONG Animal
+# Trabalho Prático - Acolhe: Sistema de Gestão de ONG Animal
 
 <p align="center">
   <a href="#">
@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/badge/Django-Backend-blue.svg" alt="Django Backend">
   </a>
   <a href="#">
-    <img src="https://img.shields.io/badge/Vue.js-Frontend-orange.svg" alt="Vue.js Frontend">
+    <img src="https://img.shields.io/badge/Bootstrap-Frontend-purple.svg" alt="Bootstrap Frontend">
   </a>
 </p>
 
@@ -18,6 +18,7 @@
 * [Integrantes do Grupo](#integrantes-do-grupo)
 * [Recursos Utilizados](#recursos-utilizados)
 * [Funcionalidades](#funcionalidades)
+* [Telas do Sistema](#telas-do-sistema)
 * [Modelagem do Banco de Dados](#modelagem-do-banco-de-dados)
 * [Instalação e Execução](#instalação-e-execução)
 * [Estrutura do Projeto](#estrutura-do-projeto)
@@ -27,9 +28,11 @@
 
 <a href="#índice"><img align="right" width="15" height="15" src="./docs/up-arrow.png" alt="Voltar para topo"></a>
 
-O Acolhe é um sistema para gestão de uma ONG de proteção animal, feito com o framework Python Django. Ele organiza animais resgatados, abrigos, adoções, prontuário veterinário, doações e voluntários.
+O Acolhe é um sistema para gestão de uma ONG de proteção animal, feito com o framework Python Django. Ele organiza os animais resgatados, os abrigos, os pedidos de adoção, o prontuário veterinário, as doações e as pessoas que fazem parte da ONG.
 
-Este projeto foi desenvolvido na disciplina GAC116 - Programação Web da Universidade Federal de Lavras (UFLA). O Django cuida do banco de dados, da autenticação e da área administrativa. A área dos usuários é feita em Vue.js e conversa com o Django por meio de uma API em JSON.
+Quem quer adotar se cadastra no site, procura um animal e envia o pedido de adoção. Os voluntários cadastram os animais, registram os atendimentos veterinários e as doações. O gestor aprova ou recusa as adoções e administra abrigos, espécies e a equipe.
+
+Este projeto foi desenvolvido na disciplina GAC116 - Programação Web da Universidade Federal de Lavras (UFLA). As telas são templates do Django com o framework CSS Bootstrap. A área administrativa usa o Django Admin com o tema Jazzmin.
 
 ## Integrantes do Grupo
 
@@ -45,9 +48,13 @@ Este projeto foi desenvolvido na disciplina GAC116 - Programação Web da Univer
 
 ### Linguagens
 
-* Python - Linguagem de programação do backend
+* Python - Linguagem de programação principal
   * [Link do site Python](https://www.python.org/)
-* JavaScript - Linguagem do frontend
+* HTML - Responsável pela estrutura das páginas
+  * [Link do curso da W3Schools](https://www.w3schools.com/html/default.asp)
+* CSS - Responsável pela apresentação das páginas
+  * [Link do curso da W3Schools](https://www.w3schools.com/css/default.asp)
+* JavaScript - Responsável pelo tema claro e escuro e pelos gráficos
   * [Link do curso da W3Schools](https://www.w3schools.com/js/default.asp)
 * SQL - Linguagem para consultas no banco de dados
   * [Link do curso da W3Schools](https://www.w3schools.com/sql/default.asp)
@@ -56,8 +63,6 @@ Este projeto foi desenvolvido na disciplina GAC116 - Programação Web da Univer
 
 * Django - Framework web
   * [Link do site do Django](https://www.djangoproject.com/)
-* Vue.js - Framework JavaScript para a interface
-  * [Link do site do Vue.js](https://vuejs.org/)
 * Bootstrap - Framework CSS
   * [Link do site do Bootstrap](https://getbootstrap.com/)
 
@@ -65,10 +70,12 @@ Este projeto foi desenvolvido na disciplina GAC116 - Programação Web da Univer
 
 * Jazzmin - Biblioteca Python para Interface Administrativa do Django
   * [Link do django-jazzmin](https://django-jazzmin.readthedocs.io/)
-* Vue Router - Biblioteca para as rotas do Vue.js
-  * [Link do site do Vue Router](https://router.vuejs.org/)
-* Vite - Ferramenta para executar e compilar o Vue.js
-  * [Link do site do Vite](https://vite.dev/)
+* Pillow - Biblioteca Python para imagens (foto dos animais)
+  * [Link do site do Pillow](https://python-pillow.github.io/)
+* Chart.js - Biblioteca JavaScript para gráficos
+  * [Link do site do Chart.js](https://www.chartjs.org/)
+* FontAwesome - Biblioteca CSS para ícones
+  * [Link do site do Fontawesome](https://fontawesome.com/)
 
 ### Ferramentas
 
@@ -76,6 +83,8 @@ Este projeto foi desenvolvido na disciplina GAC116 - Programação Web da Univer
   * [Link site Visual Studio](https://code.visualstudio.com/)
 * Git - Sistema de controle de versão
   * [Link site do Git](https://git-scm.com/)
+* Github - Plataforma de hospedagem e colaboração em projetos de software
+  * [Link site do Github](https://github.com/)
 * Pip - Gerenciador de pacotes do Python
   * [Link site do Pip](https://pypi.org/project/pip/)
 * Venv - Ambiente virtual do Python
@@ -89,19 +98,94 @@ Este projeto foi desenvolvido na disciplina GAC116 - Programação Web da Univer
 
 <a href="#índice"><img align="right" width="15" height="15" src="./docs/up-arrow.png" alt="Voltar para topo"></a>
 
-* Cadastro, login e logout.
-* Três perfis: adotante, voluntário e gestor.
-* Adotante: vê os animais disponíveis, pede adoção e acompanha os próprios pedidos.
-* Voluntário: cadastra e edita animais, registra prontuário e doações, consulta adoções.
-* Gestor: tudo o que o voluntário faz, além de aprovar ou recusar adoções, gerenciar abrigos e cadastrar voluntários.
-* Área administrativa (Jazzmin) com busca, filtros e histórico por data.
-* Tema claro e tema escuro na interface.
+* Página inicial pública com os números da ONG e os animais que chegaram por último.
+* Cadastre-se, login e logout. Quem se cadastra pelo site entra como adotante.
+* Meu perfil: alterar nome, e-mail, telefone e senha.
+* Painel de acordo com o papel: o adotante vê os próprios pedidos e o gestor vê números, gráficos, pedidos pendentes e a ocupação dos abrigos.
+* Animais: busca e filtros por espécie, porte, sexo, situação e abrigo, com foto, paginação e cadastro, edição e exclusão.
+* Prontuário veterinário de cada animal.
+* Pedido de adoção pelo adotante, com aprovação ou recusa pelo gestor.
+* Doações em dinheiro, ração, medicamento ou outro, com o total arrecadado.
+* Cadastro, edição e exclusão de abrigos e espécies.
+* Pessoas: o gestor cria contas da equipe e muda o papel de cada usuário.
+* Área administrativa com o tema Jazzmin, busca, filtros, histórico por data e ações de aprovar ou recusar adoções em lote.
+* Interface responsiva, com tema claro e tema escuro.
 
-Regras de negócio:
+### Perfis de Usuário
 
-* Aprovar uma adoção marca o animal como adotado e recusa os outros pedidos do mesmo animal. Desfazer a aprovação libera o animal. Isso vale na interface e no admin.
-* Um abrigo lotado não aceita novos animais. Animais adotados não ocupam vaga.
-* A senha segue os validadores do Django (tamanho mínimo, senhas comuns e só números).
+São três papéis, guardados na tabela `pessoas_perfil`. Todas as páginas, exceto a inicial, o login e o cadastro, exigem login.
+
+| O que pode fazer | Adotante | Voluntário | Gestor |
+|---|:---:|:---:|:---:|
+| Ver os animais disponíveis e pedir adoção | Sim | - | - |
+| Acompanhar e cancelar os próprios pedidos | Sim | - | - |
+| Ver todos os animais e o prontuário | - | Sim | Sim |
+| Cadastrar e editar animais e prontuários | - | Sim | Sim |
+| Registrar e editar doações | - | Sim | Sim |
+| Ver os abrigos e a lista de adoções | - | Sim | Sim |
+| Aprovar ou recusar adoções | - | - | Sim |
+| Excluir animais, prontuários e doações | - | - | Sim |
+| Gerenciar abrigos, espécies e pessoas | - | - | Sim |
+| Acessar a área administrativa (`/admin/`) | - | - | Sim |
+
+O acesso à área administrativa vale para os usuários marcados como membros da equipe no admin, como `admin` e `gestor`. Um superusuário criado com `python3 manage.py createsuperuser` também é tratado como gestor.
+
+### Regras de Negócio
+
+* Aprovar uma adoção marca o animal como adotado e recusa os outros pedidos do mesmo animal. Desfazer a aprovação libera o animal. Isso vale nas telas e no admin.
+* Só é possível pedir a adoção de um animal disponível, e o adotante não pode ter dois pedidos em análise para o mesmo animal.
+* Um abrigo lotado não aceita novos animais, e a capacidade não pode ficar menor que o número de animais que já estão nele. Animais adotados não ocupam vaga.
+* Não é possível excluir um animal com pedidos de adoção, nem um abrigo ou uma espécie com animais.
+* Doação em dinheiro precisa ter valor, e o valor não pode ser negativo.
+* A senha segue os validadores do Django (tamanho mínimo, senhas comuns, só números e parecida com o usuário).
+
+## Telas do Sistema
+
+<a href="#índice"><img align="right" width="15" height="15" src="./docs/up-arrow.png" alt="Voltar para topo"></a>
+
+Página inicial:
+
+![Página inicial](./docs/telas/principal.png)
+
+Cadastre-se:
+
+![Cadastro](./docs/telas/cadastro.png)
+
+Painel do gestor:
+
+![Painel do gestor](./docs/telas/painel-gestor.png)
+
+Animais, com busca e filtros:
+
+![Animais](./docs/telas/animais.png)
+
+Detalhe do animal, com prontuário e pedidos de adoção:
+
+![Detalhe do animal](./docs/telas/animal-detalhe.png)
+
+Adoções, com aprovação e recusa:
+
+![Adoções](./docs/telas/adocoes.png)
+
+Doações:
+
+![Doações](./docs/telas/doacoes.png)
+
+Abrigos:
+
+![Abrigos](./docs/telas/abrigos.png)
+
+Tema escuro:
+
+![Tema escuro](./docs/telas/tema-escuro.png)
+
+Celular, na conta de um adotante:
+
+![Celular](./docs/telas/celular.png)
+
+Área administrativa com Jazzmin:
+
+![Admin](./docs/telas/admin.png)
 
 ## Modelagem do Banco de Dados
 
@@ -119,8 +203,6 @@ User    1---1 Perfil
 User    1---N Doacao
 ```
 
-As espécies novas são cadastradas no admin.
-
 ## Instalação e Execução
 
 <a href="#índice"><img align="right" width="15" height="15" src="./docs/up-arrow.png" alt="Voltar para topo"></a>
@@ -128,7 +210,7 @@ As espécies novas são cadastradas no admin.
 ### Clonar o Repositório
 
 ```bash
-git clone <endereço-do-repositório>
+git clone https://github.com/FelipeOliveira456/acolhe.git
 ```
 
 ### Navegar até a Pasta do Projeto
@@ -177,7 +259,10 @@ O script cria os usuários abaixo:
 | admin      | admin123      | gestor (superusuário) |
 | gestor     | gestor123     | gestor (superusuário) |
 | voluntario | voluntario123 | voluntário            |
+| carla      | carla123      | voluntário            |
 | adotante   | adotante123   | adotante              |
+| pedro      | pedro123      | adotante              |
+| julia      | julia123      | adotante              |
 
 ### Executar o Projeto
 
@@ -187,23 +272,7 @@ python3 manage.py runserver
 
 Abra `http://127.0.0.1:8000/`. A área administrativa fica em `http://127.0.0.1:8000/admin/`. Entre com `admin` ou `gestor`.
 
-Um superusuário criado com `python3 manage.py createsuperuser` também funciona e é tratado como gestor.
-
-### Alterar a Interface Vue
-
-O Vue já vem compilado em `code/static/spa`. Para alterar a interface e ver a mudança na hora, em outro terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-O Vite abre `http://127.0.0.1:5173` e encaminha a API para o Django. Depois de mudar o Vue, gere de novo os arquivos que o Django serve:
-
-```bash
-npm run build
-```
+As fotos enviadas no cadastro dos animais ficam na pasta `code/media/animais`.
 
 ## Estrutura do Projeto
 
@@ -217,13 +286,14 @@ acolhe/
 ├── code/
 │   ├── manage.py
 │   ├── requirements.txt
-│   ├── gestao_ong/      # configurações, Jazzmin e página do Vue
+│   ├── gestao_ong/      # configurações, rotas, Jazzmin e página inicial
+│   ├── usuarios/        # login, cadastro, logout, perfil, painel e permissões
 │   ├── animais/         # espécies, abrigos, animais e prontuários
-│   ├── pessoas/         # perfis, adoções, doações e voluntários
-│   ├── scripts-bd/      # scripts para popular e apagar os dados
-│   └── static/spa/      # Vue já compilado
-├── docs/                # modelagem e imagens
-└── frontend/            # código-fonte Vue
+│   ├── pessoas/         # perfis, adoções, doações e pessoas
+│   ├── templates/       # base.html e templates usados por todos os apps
+│   ├── static/          # styles.css e script.js
+│   └── scripts-bd/      # scripts para popular e apagar os dados
+└── docs/                # modelagem e telas do sistema
 ```
 
 ## Referências e Materiais de Apoio
@@ -234,5 +304,5 @@ Este trabalho foi baseado nos seguintes materiais:
 
 * [Documentação oficial do Django](https://docs.djangoproject.com/pt-br/6.1/)
 * [Curso de Django da W3Schools](https://www.w3schools.com/django/index.php)
-* [Documentação do Vue.js](https://vuejs.org/guide/introduction.html)
-* Aulas Django 02, 04 e 05 da disciplina GAC116 - Programação Web
+* [Documentação do Bootstrap](https://getbootstrap.com/docs/5.3/getting-started/introduction/)
+* Aulas Django 02, 04 e 05 e aula de Bootstrap da disciplina GAC116 - Programação Web
