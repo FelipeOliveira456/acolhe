@@ -1,0 +1,67 @@
+body {
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+footer {
+    width: 100%;
+    background-color: #198754;
+    margin-top: auto;
+}
+
+.card {
+    transition: transform 0.3s ease;
+}
+
+a.card:hover,
+.card-animal:hover {
+    transform: scale(1.02);
+}
+
+.card-title-acolhe {
+    background-color: #157347;
+    color: white;
+}
+
+.logo-acolhe {
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background-color: #198754;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 110px;
+}
+
+.foto-animal {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.foto-animal.sem-foto {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 72px;
+    color: #198754;
+    background-color: var(--bs-success-bg-subtle);
+}
+
+.foto-animal.grande {
+    height: 360px;
+    border-radius: 0.5rem;
+}
+
+.grafico {
+    position: relative;
+    height: 40vh;
+}

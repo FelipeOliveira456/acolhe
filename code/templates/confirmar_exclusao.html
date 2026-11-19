@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe - Confirmar exclusão
+{% endblock %}
+
+{% block conteudo %}
+    <main class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="card border-danger shadow-sm">
+                    <div class="card-header bg-danger text-white">
+                        <i class="fas fa-trash"></i> Confirmar exclusão
+                    </div>
+                    <div class="card-body">
+                        <p>Tem certeza que deseja excluir <strong>{{ object }}</strong>?</p>
+                        <p class="text-secondary small">Essa ação não pode ser desfeita.</p>
+                        <form method="POST" class="d-flex gap-2">
+                            {% csrf_token %}
+                            <button class="btn btn-danger" type="submit">Excluir</button>
+                            <a class="btn btn-outline-secondary" href="{{ voltar }}">Cancelar</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+{% endblock %}

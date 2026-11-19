@@ -1,0 +1,7 @@
+{% if animal.foto %}
+    <img src="{{ animal.foto.url }}" alt="{{ animal.nome }}" class="foto-animal {{ classe }}">
+{% else %}
+    <div class="foto-animal sem-foto {{ classe }}">
+        <i class="fas {% if animal.especie.nome == 'Gato' %}fa-cat{% elif animal.especie.nome == 'Cachorro' %}fa-dog{% else %}fa-paw{% endif %}"></i>
+    </div>
+{% endif %}
