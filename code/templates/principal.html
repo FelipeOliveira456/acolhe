@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe
+{% endblock %}
+
+{% block conteudo %}
+    <main>
+        <section class="py-5 bg-body-tertiary border-bottom">
+            <div class="container">
+                <div class="row align-items-center g-4">
+                    <div class="col-lg-7">
+                        <h1 class="display-5 fw-bold">Acolhe</h1>
+                        <h4 class="text-secondary">Gestão de ONG de proteção animal</h4>
+                        <p class="lead mt-3">
+                            Organizamos o resgate, o cuidado e a adoção de cães, gatos e outros animais. Conheça os animais que estão
+                            esperando um lar, acompanhe seus pedidos de adoção e ajude a ONG.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2 mt-4">
+                            {% if user.is_authenticated %}
+                                <a class="btn btn-success btn-lg" href="/painel"><i class="fas fa-chart-line"></i> Ir para o painel</a>
+                                <a class="btn btn-outline-success btn-lg" href="/animais"><i class="fas fa-dog"></i> Ver animais</a>
+                            {% else %}
+                                <a class="btn btn-success btn-lg" href="/auth/cadastro"><i class="fas fa-user-plus"></i> Quero adotar</a>
+                                <a class="btn btn-outline-success btn-lg" href="/auth/login"><i class="fas fa-sign-in-alt"></i> Já tenho conta</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-lg-5 text-center">
+                        <div class="logo-acolhe mx-auto">
+                            <i class="fas fa-paw"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="container mt-5">
+            <div class="row g-3 text-center">
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <i class="fas fa-dog fa-2x text-success"></i>
+                            <div class="display-6 fw-bold">{{ disponiveis }}</div>
+                            <p class="card-text text-secondary">animais esperando um lar</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <i class="fas fa-heart fa-2x text-danger"></i>
+                            <div class="display-6 fw-bold">{{ adotados }}</div>
+                            <p class="card-text text-secondary">adoções realizadas</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <i class="fas fa-home fa-2x text-primary"></i>
+                            <div class="display-6 fw-bold">{{ abrigos }}</div>
+                            <p class="card-text text-secondary">abrigos parceiros</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {% if animais %}
+            <section class="container mt-5">
+                <h3>Chegaram recentemente</h3>
+                <div class="row g-3 mt-1">
+                    {% for animal in animais %}
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card h-100 shadow-sm">
+                                {% include "_foto_animal.html" with animal=animal %}
+                                <div class="card-body">
+                                    <h5 class="card-title mb-1">{{ animal.nome }}</h5>
+                                    <p class="card-text text-secondary small">{{ animal.especie }} · {{ animal.get_sexo_display }} · porte {{ animal.get_porte_display|lower }}</p>
+                                    <a class="btn btn-sm btn-outline-success" href="/animais/{{ animal.id }}">Conhecer</a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="container mt-5">
+            <h3>Como funciona a adoção</h3>
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-header card-title-acolhe"><i class="fas fa-user-plus"></i> 1. Cadastre-se</div>
+                        <div class="card-body">
+                            <p class="card-text">Crie sua conta de adotante com usuário, e-mail e telefone.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-header card-title-acolhe"><i class="fas fa-search"></i> 2. Escolha um animal</div>
+                        <div class="card-body">
+                            <p class="card-text">Filtre por espécie, porte e sexo e envie o pedido de adoção.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-header card-title-acolhe"><i class="fas fa-check"></i> 3. Aguarde a resposta</div>
+                        <div class="card-body">
+                            <p class="card-text">A gestão da ONG analisa o pedido e você acompanha tudo pelo painel.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+{% endblock %}

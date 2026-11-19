@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block titulo %}
+    Acolhe - {{ titulo }}
+{% endblock %}
+
+{% block conteudo %}
+    <main class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header card-title-acolhe">
+                        <i class="fas {{ icone|default:'fa-pen' }}"></i> {{ titulo }}
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            {% for erro in form.non_field_errors %}
+                                <div class="alert alert-danger">{{ erro }}</div>
+                            {% endfor %}
+                            <div class="row g-3">
+                                {% for campo in form %}
+                                    {% if campo.widget_type == 'checkbox' %}
+                                        <div class="col-12">
+                                            <div class="form-check">
+                                                {{ campo }}
+                                                <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div class="{% if campo.widget_type == 'textarea' or campo.widget_type == 'clearablefile' or form.fields|length < 3 %}col-12{% else %}col-md-6{% endif %}">
+                                            <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %} *{% endif %}</label>
+                                            {{ campo }}
+                                            {% if campo.help_text %}
+                                                <div class="form-text">{{ campo.help_text|safe }}</div>
+                                            {% endif %}
+                                            {% for erro in campo.errors %}
+                                                <div class="text-danger small mt-1">{{ erro }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="mt-4 d-flex gap-2">
+                                <button class="btn btn-success" type="submit"><i class="fas fa-check"></i> Salvar</button>
+                                <a class="btn btn-outline-secondary" href="{{ voltar }}">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+{% endblock %}
